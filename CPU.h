@@ -20,6 +20,7 @@ private:
 	std::unordered_map<std::string, Instr> ops;
 
 	void init();
+	void jump(int target);
 
 public:
 

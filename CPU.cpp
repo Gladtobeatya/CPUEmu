@@ -12,21 +12,57 @@ void CPU::init()
 		ss >> a >> b;
 		cpu.regs[a] += stoi(b);
 	};
+	ops["SUB"] = [](CPU& cpu, std::stringstream& ss) {
+		std::string a, b;
+		ss >> a >> b;
+		cpu.regs[a] -= stoi(b);
+	};
 	ops["JMP"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a;
 		ss >> a;
-		cpu.pc = stoi(a) - 1;
-		if(cpu.pc < 1 || cpu.pc >= cpu.program.size()) {
-			std::cerr << "Jump out of bounds: " << cpu.pc + 1 << " stopping CPU" << std::endl;
-			cpu.bIsRunning = false;
-		}
+		cpu.jump(stoi(a));
 	};
 	ops["PRINT"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a;
 		ss >> a;
 		std::cout << cpu.regs[a] << std::endl;
 	};
+	ops["MUL"] = [](CPU& cpu, std::stringstream& ss) {
+		std::string a, b;
+		ss >> a >> b;
+		cpu.regs[a] *= stoi(b);
+	};
+	ops["DIV"] = [](CPU& cpu, std::stringstream& ss) {
+		std::string a, b;
+		ss >> a >> b;
+		if (b == "0") {
+			std::cerr << "Div by 0.. stopping CPU" << std::endl;
+			cpu.bIsRunning = false;
+			return;
+		}
+		cpu.regs[a] /= stoi(b);
+	};
+	// Jump if zero
+	ops["JZ"] = [](CPU& cpu, std::stringstream& ss) {
+		std::string a, b;
+		ss >> a >> b;
+		if (cpu.regs[a] == 0) {
+			cpu.jump(stoi(b));
+		}
+	};
+
+
 	bIsRunning = true;
+}
+
+void CPU::jump(int target)
+{
+	// PC is 0-indexed internally, but instructions are 1-indexed for the user
+	pc = target - 1;
+	if (pc < 1 || pc >= program.size()) {
+		std::cerr << "Jump out of bounds: " << pc + 1 << " stopping CPU" << std::endl;
+		bIsRunning = false;
+	}
 }
 
 void CPU::load(const std::string& filename)
