@@ -1,5 +1,34 @@
 #include "CPU.h"
 
+void CPU::init()
+{
+	ops["SET"] = [](CPU& cpu, std::stringstream& ss) {
+		std::string a, b;
+		ss >> a >> b;
+		cpu.regs[a] = stoi(b);
+	};
+	ops["ADD"] = [](CPU& cpu, std::stringstream& ss) {
+		std::string a, b;
+		ss >> a >> b;
+		cpu.regs[a] += stoi(b);
+	};
+	ops["JMP"] = [](CPU& cpu, std::stringstream& ss) {
+		std::string a;
+		ss >> a;
+		cpu.pc = stoi(a) - 1;
+		if(cpu.pc < 1 || cpu.pc >= cpu.program.size()) {
+			std::cerr << "Jump out of bounds: " << cpu.pc + 1 << " stopping CPU" << std::endl;
+			cpu.bIsRunning = false;
+		}
+	};
+	ops["PRINT"] = [](CPU& cpu, std::stringstream& ss) {
+		std::string a;
+		ss >> a;
+		std::cout << cpu.regs[a] << std::endl;
+	};
+	bIsRunning = true;
+}
+
 void CPU::load(const std::string& filename)
 {
 	std::ifstream file(filename);
@@ -15,31 +44,12 @@ void CPU::run()
 {
 	size_t pSize = program.size();
 	std::cerr << "Program loaded with " << pSize << " instructions." << std::endl;
-	while (pc < pSize) {
+	while (bIsRunning && pc < pSize) {
 		std::string line = program[pc++];
 		std::stringstream ss(line);
-		std::string op, a, b;
+		std::string op;
 		ss >> op;
-		if (op == "SET") {
-			ss >> a >> b;
-			regs[a] = stoi(b);
-		}
-		else if (op == "ADD") {
-			ss >> a >> b;
-			regs[a] += stoi(b);
-		}
-		else if (op == "JMP") {
-			ss >> a;
-			pc = stoi(a) - 1;
-			if(pc < 1 || pc >= pSize) {
-				std::cerr << "Jump out of bounds: " << pc + 1<< std::endl;
-				break;
-			}
-		}
-		else if (op == "PRINT") {
-			ss >> a;
-			std::cout << regs[a] << std::endl;
-		}
+		ops[op](*this, ss);
 
 	}
 }
