@@ -11,7 +11,7 @@ class CPU
 {
 private:
 	int pc = 0;
-	bool bIsRunning = false;
+	bool bIsRunning = true;
 	std::unordered_map<std::string, int> regs;
 	std::vector<std::string> program;
 
@@ -24,7 +24,10 @@ private:
 
 	void init();
 	void jump(int target);
-	bool isValid(const std::string& reg);
+	bool isValidReg(const std::string& reg);
+	static bool isValidImm(const std::string& imm);
+	void fail();
+	int tryGetValue(const std::string& s);
 
 public:
 

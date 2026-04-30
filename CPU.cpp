@@ -2,116 +2,166 @@
 
 void CPU::init()
 {
+	// Initialize registers R0 to R9 to 0
+	for (int i = 0; i < 10; i++) {
+		regs["R" + std::to_string(i)] = 0;
+	}
+
 	ops["SET"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a, b;
 		ss >> a >> b;
-		cpu.regs[a] = stoi(b);
+		if (cpu.isValidReg(a)) {
+			cpu.regs[a] = cpu.tryGetValue(b);
+		}
+		else cpu.fail();
 	};
 	ops["ADD"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a, b;
 		ss >> a >> b;
-		if(cpu.isValid(a)){
-			cpu.regs[a] += stoi(b);
+		if (cpu.isValidReg(a)) {
+			cpu.regs[a] += cpu.tryGetValue(b);
 		}
+		else cpu.fail();
 	};
 	ops["SUB"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a, b;
 		ss >> a >> b;
-		if (cpu.isValid(a)) {
-			cpu.regs[a] -= stoi(b);
+		if (cpu.isValidReg(a)) {
+			cpu.regs[a] -= cpu.tryGetValue(b);
 		}
+		else cpu.fail();
 	};
 	ops["JMP"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a;
 		ss >> a;
-		cpu.jump(stoi(a));
+		if (CPU::isValidImm(a)) {
+			cpu.jump(stoi(a));
+		}
+		else cpu.fail();
 	};
 	ops["PRINT"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a;
 		ss >> a;
-		if (cpu.isValid(a)) {
-			std::cout << cpu.regs[a] << std::endl;
-		}
+		std::cout << cpu.tryGetValue(a) << std::endl;
 	};
 	ops["MUL"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a, b;
 		ss >> a >> b;
-		if (cpu.isValid(a)) {
-			cpu.regs[a] *= stoi(b);
+		if (cpu.isValidReg(a)) {
+			cpu.regs[a] *= cpu.tryGetValue(b);
 		}
+		else cpu.fail();
 	};
 	ops["DIV"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a, b;
 		ss >> a >> b;
-		if (cpu.isValid(a)) {
-			if (b == "0") {
+		if (cpu.isValidReg(a)) {
+			int val = cpu.tryGetValue(b);
+			if (val == 0) {
 				std::cerr << "Div by 0.. Stopping CPU" << std::endl;
 				cpu.bIsRunning = false;
 				return;
 			}
-			cpu.regs[a] /= stoi(b);
+			cpu.regs[a] /= val;
 		}
+		else cpu.fail();
 	};
 	ops["INC"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a;
 		ss >> a;
-		if (cpu.isValid(a)) {
+		if (cpu.isValidReg(a)) {
 			cpu.regs[a]++;
 		}
+		else cpu.fail();
 	};
 	ops["DEC"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a;
 		ss >> a;
-		if (cpu.isValid(a)) {
+		if (cpu.isValidReg(a)) {
 			cpu.regs[a]--;
 		}
+		else cpu.fail();
 	};
-	// Compare two registers and set zeroFlag if they are equal
+	// Set zeroFlag to true if equal
 	ops["CMP"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a, b;
 		ss >> a >> b;
-		if (cpu.isValid(a) && cpu.isValid(b)) {
-			cpu.zeroFlag = (cpu.regs[a] == cpu.regs[b]);
+		if (cpu.isValidReg(a)) {
+			cpu.zeroFlag = (cpu.regs[a] == cpu.tryGetValue(b));
 		}
+		else cpu.fail();
 	};
-	// Jump if zeroFlag is false
+	// Jump if zeroFlag is true
 	ops["JZ"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a;
 		ss >> a;
-		if (cpu.zeroFlag) {
+		if (cpu.zeroFlag && CPU::isValidImm(a)){
 			cpu.jump(stoi(a));
 		}
+		else cpu.fail();
 	};
 	// Jump if zeroFlag is not true
 	ops["JNZ"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a;
 		ss >> a;
-		if (!cpu.zeroFlag) {
+		if (!cpu.zeroFlag && CPU::isValidImm(a)) {
 			cpu.jump(stoi(a));
 		}
+		else cpu.fail();
 	};
-
-
-	bIsRunning = true;
+	ops["MOV"] = [](CPU& cpu, std::stringstream& ss) {
+		std::string a, b;
+		ss >> a >> b;
+		if (cpu.isValidReg(a)) {
+			cpu.regs[a] = cpu.tryGetValue(b);
+		}
+		else cpu.fail();
+	};
+	ops["HALT"] = [](CPU& cpu, std::stringstream& ss) {
+		cpu.bIsRunning = false;
+	};
 }
 
 void CPU::jump(int target)
 {
-	// PC is 0-indexed internally, but instructions are 1-indexed for the user
-	pc = target - 1;
-	if (pc < 1 || pc >= program.size()) {
-		std::cerr << "Jump out of bounds: " << pc + 1 << " stopping CPU" << std::endl;
+	// PC is 0-indexed internally
+	pc = target;
+	if (pc < 0 || pc >= program.size()) {
+		std::cerr << "Jump out of bounds: " << pc << " stopping CPU" << std::endl;
 		bIsRunning = false;
 	}
 }
 
-bool CPU::isValid(const std::string& reg)
+bool CPU::isValidReg(const std::string& reg)
 {
-	if (!regs.contains(reg)) {
-		std::cerr << "Invalid register: " << reg << " Stopping CPU" << std::endl;
-		bIsRunning = false;
+	return regs.contains(reg);
+}
+
+bool CPU::isValidImm(const std::string& imm)
+{
+	for(auto c : imm) {
+		if (!isdigit(c)) return false;
 	}
 	return true;
+}
+
+void CPU::fail()
+{
+	std::cout << "CPU error at : " << pc - 1 << std::endl;
+	bIsRunning = false;
+}
+
+int CPU::tryGetValue(const std::string& s)
+{
+	if (isValidReg(s)) {
+		return regs[s];
+	}
+	//Lidl test to check if it's a number, assuming no negative numbers for simplicity
+	if (CPU::isValidImm(s)) {
+		return std::stoi(s);
+	}
+	fail();
+	return 0;
 }
 
 void CPU::load(const std::string& filename)
@@ -134,7 +184,13 @@ void CPU::run()
 		std::stringstream ss(line);
 		std::string op;
 		ss >> op;
-		ops[op](*this, ss);
+		if (ops.contains(op)) {
+			ops.at(op)(*this, ss);
+		}
+		else {
+			std::cerr << "Unknown opcode: " << op << " Stopping CPU" << std::endl;
+			bIsRunning = false;
+		}
 
 	}
 }
