@@ -10,12 +10,16 @@ void CPU::init()
 	ops["ADD"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a, b;
 		ss >> a >> b;
-		cpu.regs[a] += stoi(b);
+		if(cpu.isValid(a)){
+			cpu.regs[a] += stoi(b);
+		}
 	};
 	ops["SUB"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a, b;
 		ss >> a >> b;
-		cpu.regs[a] -= stoi(b);
+		if (cpu.isValid(a)) {
+			cpu.regs[a] -= stoi(b);
+		}
 	};
 	ops["JMP"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a;
@@ -25,29 +29,65 @@ void CPU::init()
 	ops["PRINT"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a;
 		ss >> a;
-		std::cout << cpu.regs[a] << std::endl;
+		if (cpu.isValid(a)) {
+			std::cout << cpu.regs[a] << std::endl;
+		}
 	};
 	ops["MUL"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a, b;
 		ss >> a >> b;
-		cpu.regs[a] *= stoi(b);
+		if (cpu.isValid(a)) {
+			cpu.regs[a] *= stoi(b);
+		}
 	};
 	ops["DIV"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a, b;
 		ss >> a >> b;
-		if (b == "0") {
-			std::cerr << "Div by 0.. stopping CPU" << std::endl;
-			cpu.bIsRunning = false;
-			return;
+		if (cpu.isValid(a)) {
+			if (b == "0") {
+				std::cerr << "Div by 0.. Stopping CPU" << std::endl;
+				cpu.bIsRunning = false;
+				return;
+			}
+			cpu.regs[a] /= stoi(b);
 		}
-		cpu.regs[a] /= stoi(b);
 	};
-	// Jump if zero
-	ops["JZ"] = [](CPU& cpu, std::stringstream& ss) {
+	ops["INC"] = [](CPU& cpu, std::stringstream& ss) {
+		std::string a;
+		ss >> a;
+		if (cpu.isValid(a)) {
+			cpu.regs[a]++;
+		}
+	};
+	ops["DEC"] = [](CPU& cpu, std::stringstream& ss) {
+		std::string a;
+		ss >> a;
+		if (cpu.isValid(a)) {
+			cpu.regs[a]--;
+		}
+	};
+	// Compare two registers and set zeroFlag if they are equal
+	ops["CMP"] = [](CPU& cpu, std::stringstream& ss) {
 		std::string a, b;
 		ss >> a >> b;
-		if (cpu.regs[a] == 0) {
-			cpu.jump(stoi(b));
+		if (cpu.isValid(a) && cpu.isValid(b)) {
+			cpu.zeroFlag = (cpu.regs[a] == cpu.regs[b]);
+		}
+	};
+	// Jump if zeroFlag is false
+	ops["JZ"] = [](CPU& cpu, std::stringstream& ss) {
+		std::string a;
+		ss >> a;
+		if (cpu.zeroFlag) {
+			cpu.jump(stoi(a));
+		}
+	};
+	// Jump if zeroFlag is not true
+	ops["JNZ"] = [](CPU& cpu, std::stringstream& ss) {
+		std::string a;
+		ss >> a;
+		if (!cpu.zeroFlag) {
+			cpu.jump(stoi(a));
 		}
 	};
 
@@ -63,6 +103,15 @@ void CPU::jump(int target)
 		std::cerr << "Jump out of bounds: " << pc + 1 << " stopping CPU" << std::endl;
 		bIsRunning = false;
 	}
+}
+
+bool CPU::isValid(const std::string& reg)
+{
+	if (!regs.contains(reg)) {
+		std::cerr << "Invalid register: " << reg << " Stopping CPU" << std::endl;
+		bIsRunning = false;
+	}
+	return true;
 }
 
 void CPU::load(const std::string& filename)
