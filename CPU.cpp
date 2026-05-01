@@ -58,8 +58,7 @@ void CPU::init()
 		if (cpu.isValidReg(a)) {
 			int val = cpu.tryGetValue(b);
 			if (val == 0) {
-				std::cerr << "Div by 0.. Stopping CPU" << std::endl;
-				cpu.bIsRunning = false;
+				cpu.fail();
 				return;
 			}
 			cpu.regs[a] /= val;
